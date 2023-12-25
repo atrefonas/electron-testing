@@ -60,15 +60,26 @@ const installExtensions = async () => {
 let goServerProcess: ReturnType<typeof spawn> | null = null;
 
 function startGoWebServer() {
-  // Path for development and production
-  const goExecutablePath = app.isPackaged
-    ? path.join(process.resourcesPath, 'resources', 'go-web-server') // Path in production
-    : path.join(__dirname, '../../resources', 'go-web-server'); // Adjusted path in development
+  let goExecutablePath: string;
+  let args: readonly string[] | undefined;
+
+  if (app.isPackaged) {
+    // Path and arguments in production
+    goExecutablePath = path.join(
+      process.resourcesPath,
+      'resources',
+      'go-web-server',
+    );
+    args = [process.resourcesPath];
+  } else {
+    // Adjusted path in development, no additional arguments
+    goExecutablePath = path.join(__dirname, '../../resources', 'go-web-server');
+    args = [];
+  }
 
   try {
-    goServerProcess = spawn(goExecutablePath);
+    goServerProcess = spawn(goExecutablePath, args);
     console.log('server started!');
-    // ... rest of the code remains the same ...
   } catch (error) {
     console.error('Failed to start go-web-server:', error);
     throw error;
@@ -87,6 +98,13 @@ function startGoWebServer() {
     goServerProcess = null;
   });
 }
+
+// Add an event listener to shut down the Go server when the Electron app quits
+app.on('before-quit', () => {
+  if (goServerProcess) {
+    goServerProcess.kill();
+  }
+});
 
 const createWindow = async () => {
   if (isDebug) {
